@@ -1,12 +1,15 @@
 import { useState } from 'react'
-import { LayoutDashboard, Presentation, RefreshCw } from 'lucide-react'
+import { LayoutDashboard, Presentation, LogOut, RefreshCw, Plug } from 'lucide-react'
 import clsx from 'clsx'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import LoginPage from './pages/LoginPage'
+import SettingsPage from './pages/SettingsPage'
 import Dashboard from './components/Dashboard'
 import Deck from './components/Deck'
 import { mockReportData } from './data/mockData'
 import { ReportData, DateRange } from './types'
 
-type View = 'dashboard' | 'deck'
+type View = 'dashboard' | 'deck' | 'settings'
 
 const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
   { value: 'this_month', label: 'This Month' },
@@ -16,10 +19,29 @@ const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
   { value: 'ytd',       label: 'Year to Date' },
 ]
 
-export default function App() {
-  const [view, setView] = useState<View>('dashboard')
+// ── Inner app (authenticated) ─────────────────────────────────────────────────
+function AppInner() {
+  const { user, loading, logout } = useAuth()
+  const [view, setView]           = useState<View>('dashboard')
   const [dateRange, setDateRange] = useState<DateRange>('last_month')
-  const [data] = useState<ReportData>(mockReportData)
+  const [data]                    = useState<ReportData>(mockReportData)
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-gray-400">
+          <RefreshCw size={24} className="animate-spin" />
+          <p className="text-sm">Loading…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) return <LoginPage />
+
+  // Auto-switch to settings if redirected there after OAuth
+  const path = window.location.pathname
+  if (path === '/settings' && view !== 'settings') setView('settings')
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -39,30 +61,23 @@ export default function App() {
 
           {/* View switcher */}
           <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
-            <button
-              onClick={() => setView('dashboard')}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
-                view === 'dashboard'
-                  ? 'bg-white shadow text-indigo-700'
-                  : 'text-gray-500 hover:text-gray-700',
-              )}
-            >
-              <LayoutDashboard size={15} />
-              Live Dashboard
-            </button>
-            <button
-              onClick={() => setView('deck')}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
-                view === 'deck'
-                  ? 'bg-white shadow text-indigo-700'
-                  : 'text-gray-500 hover:text-gray-700',
-              )}
-            >
-              <Presentation size={15} />
-              Monthly Deck
-            </button>
+            {([
+              { id: 'dashboard', label: 'Live Dashboard',  icon: <LayoutDashboard size={15} /> },
+              { id: 'deck',      label: 'Monthly Deck',    icon: <Presentation size={15} /> },
+              { id: 'settings',  label: 'Connect Accounts', icon: <Plug size={15} /> },
+            ] as { id: View; label: string; icon: React.ReactNode }[]).map((v) => (
+              <button
+                key={v.id}
+                onClick={() => setView(v.id)}
+                className={clsx(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
+                  view === v.id ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700',
+                )}
+              >
+                {v.icon}
+                {v.label}
+              </button>
+            ))}
           </div>
 
           {/* Right controls */}
@@ -78,14 +93,18 @@ export default function App() {
                 ))}
               </select>
             )}
-            <button className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition">
-              <RefreshCw size={13} />
-              Refresh
-            </button>
-            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 border-r border-gray-200 pr-3">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Live
+              {user.email}
             </div>
+            <button
+              onClick={logout}
+              title="Sign out"
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 px-2 py-1.5 rounded-lg hover:bg-red-50 transition"
+            >
+              <LogOut size={13} />
+              Sign out
+            </button>
           </div>
         </div>
       </header>
@@ -95,7 +114,8 @@ export default function App() {
         <div className="bg-white border-b border-gray-100 no-print">
           <div className="max-w-screen-2xl mx-auto px-6 py-2 flex items-center gap-6 overflow-x-auto scrollbar-hide">
             {data.platforms.map((p) => {
-              const { label, color } = { label: getPlatformLabel(p.platform), color: getPlatformColor(p.platform) }
+              const label = getPlatformLabel(p.platform)
+              const color = getPlatformColor(p.platform)
               return (
                 <div key={p.platform} className="flex items-center gap-2 text-xs flex-shrink-0">
                   <span className="w-2 h-2 rounded-full" style={{ background: color }} />
@@ -103,7 +123,9 @@ export default function App() {
                   <span className="text-gray-400">·</span>
                   <span className="font-semibold text-gray-800">${(p.spend / 1000).toFixed(1)}k</span>
                   <span className="text-gray-400">/</span>
-                  <span className={p.roas >= 3.5 ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}>{p.roas.toFixed(2)}x ROAS</span>
+                  <span className={p.roas >= 3.5 ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}>
+                    {p.roas.toFixed(2)}x ROAS
+                  </span>
                 </div>
               )
             })}
@@ -113,15 +135,17 @@ export default function App() {
 
       {/* ── Main content ── */}
       <main className="flex-1">
-        {view === 'dashboard' ? (
+        {view === 'dashboard' && (
           <div className="max-w-screen-2xl mx-auto px-6 py-6">
             <Dashboard data={data} />
           </div>
-        ) : (
+        )}
+        {view === 'deck' && (
           <div className="h-[calc(100vh-56px)]">
             <Deck data={data} />
           </div>
         )}
+        {view === 'settings' && <SettingsPage />}
       </main>
 
       {/* ── Footer ── */}
@@ -134,6 +158,15 @@ export default function App() {
         </footer>
       )}
     </div>
+  )
+}
+
+// ── Root ──────────────────────────────────────────────────────────────────────
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   )
 }
 
