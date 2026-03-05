@@ -2,8 +2,9 @@ import 'dotenv/config'
 import express from 'express'
 import session from 'express-session'
 import cors from 'cors'
-import authRouter  from './routes/auth.js'
-import oauthRouter from './routes/oauth.js'
+import authRouter    from './routes/auth.js'
+import oauthRouter   from './routes/oauth.js'
+import clientsRouter from './routes/clients.js'
 
 // ── App ───────────────────────────────────────────────────────────────────────
 const app  = express()
@@ -27,8 +28,9 @@ app.use(session({
 }))
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/api/auth',  authRouter)
-app.use('/api/oauth', oauthRouter)
+app.use('/api/auth',    authRouter)
+app.use('/api/oauth',   oauthRouter)
+app.use('/api/clients', clientsRouter)
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
