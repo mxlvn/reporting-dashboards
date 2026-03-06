@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ClientProvider, useClients } from './contexts/ClientContext'
 import LoginPage from './pages/LoginPage'
-import SettingsPage from './pages/SettingsPage'
+import UploadsPage from './pages/UploadsPage'
 import Dashboard from './components/Dashboard'
 import Deck from './components/Deck'
 import { mockReportData } from './data/mockData'
@@ -206,7 +206,7 @@ function AppInner() {
             {([
               { id: 'dashboard', label: 'Dashboard',        icon: <LayoutDashboard size={15} /> },
               { id: 'deck',      label: 'Monthly Deck',     icon: <Presentation size={15} /> },
-              { id: 'settings',  label: 'Connect Accounts', icon: <Plug size={15} /> },
+              { id: 'settings',  label: 'Upload Data', icon: <Plug size={15} /> },
             ] as { id: View; label: string; icon: React.ReactNode }[]).map((v) => (
               <button
                 key={v.id}
@@ -283,7 +283,7 @@ function AppInner() {
           </div>
         )}
         {view === 'deck' && <div className="h-[calc(100vh-56px)]"><Deck data={data} /></div>}
-        {view === 'settings' && <SettingsPage />}
+        {view === 'settings' && <UploadsPage />}
       </main>
 
       {/* ── Footer ── */}

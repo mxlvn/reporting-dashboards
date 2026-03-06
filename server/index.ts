@@ -3,7 +3,7 @@ import express from 'express'
 import session from 'express-session'
 import cors from 'cors'
 import authRouter    from './routes/auth.js'
-import oauthRouter   from './routes/oauth.js'
+import uploadsRouter from './routes/uploads.js'
 import clientsRouter from './routes/clients.js'
 
 // ── App ───────────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ app.use(session({
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',    authRouter)
-app.use('/api/oauth',   oauthRouter)
+app.use('/api/uploads', uploadsRouter)
 app.use('/api/clients', clientsRouter)
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
