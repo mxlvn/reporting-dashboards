@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, FormEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, FormEvent } from 'react'
 import { LayoutDashboard, Presentation, LogOut, RefreshCw, Plug, ChevronDown, Plus, Trash2, Check } from 'lucide-react'
 import clsx from 'clsx'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -169,8 +169,31 @@ function AppInner() {
   const { selected }              = useClients()
   const [view,          setView]          = useState<View>('dashboard')
   const [dateRange,     setDateRange]     = useState<DateRange>('last_month')
-  const [data]                            = useState<ReportData>(mockReportData)
+  const [data,          setData]          = useState<ReportData>(mockReportData)
+  const [dataLoading,   setDataLoading]   = useState(false)
   const [showAddClient, setShowAddClient] = useState(false)
+
+  const fetchReport = useCallback(async (clientId: string) => {
+    setDataLoading(true)
+    try {
+      const res = await fetch(`/api/report/${clientId}`, { credentials: 'include' })
+      if (res.ok) {
+        const report = await res.json() as ReportData
+        setData(report)
+      } else {
+        // No uploads yet — fall back to empty/mock so the UI doesn't crash
+        setData(mockReportData)
+      }
+    } catch {
+      setData(mockReportData)
+    } finally {
+      setDataLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (selected) fetchReport(selected.id)
+  }, [selected?.id, fetchReport])
 
   if (loading) {
     return (
@@ -269,7 +292,16 @@ function AppInner() {
       <main className="flex-1">
         {view === 'dashboard' && (
           <div className="max-w-screen-2xl mx-auto px-6 py-6">
-            {selected ? <Dashboard data={data} /> : (
+            {selected ? (
+            <div className="relative">
+              {dataLoading && (
+                <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10 rounded-xl">
+                  <RefreshCw size={20} className="animate-spin text-indigo-500" />
+                </div>
+              )}
+              <Dashboard data={data} />
+            </div>
+          ) : (
               <div className="flex flex-col items-center justify-center h-64 gap-4 text-gray-400">
                 <p className="text-lg font-medium">No client selected</p>
                 <button
@@ -283,7 +315,7 @@ function AppInner() {
           </div>
         )}
         {view === 'deck' && <div className="h-[calc(100vh-56px)]"><Deck data={data} /></div>}
-        {view === 'settings' && <UploadsPage />}
+        {view === 'settings' && <UploadsPage onUploadSuccess={() => selected && fetchReport(selected.id)} />}
       </main>
 
       {/* ── Footer ── */}

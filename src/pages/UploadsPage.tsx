@@ -240,7 +240,7 @@ function AutomationPanel({ clientId }: { clientId: string }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function UploadsPage() {
+export default function UploadsPage({ onUploadSuccess }: { onUploadSuccess?: () => void } = {}) {
   const { selected, clients } = useClients()
   const [uploads,   setUploads]   = useState<UploadRecord[]>([])
   const [loading,   setLoading]   = useState(false)
@@ -278,6 +278,7 @@ export default function UploadsPage() {
       if (!res.ok) { setError(data.error ?? 'Upload failed'); return }
       setUploads((prev) => [data, ...prev])
       setSuccess(`Uploaded "${file.name}" — ${data.metrics.rows} rows parsed`)
+      onUploadSuccess?.()
     } catch {
       setError('Upload failed. Check the server is running.')
     } finally { setUploading(false) }
